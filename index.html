@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RAVENIX NOVA</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  -webkit-tap-highlight-color:transparent;
+}
+
+html,body{
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#05070d;
+  font-family:Arial,sans-serif;
+  touch-action:none;
+}
+
+canvas{
+  display:block;
+  width:100%;
+  height:100%;
+  background:
+    radial-gradient(circle at center,#111a2b 0%,#060912 65%,#020307 100%);
+}
+
+#menu{
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  background:linear-gradient(#03050bd9,#050914f2);
+  z-index:20;
+  color:white;
+}
+
+.logo{
+  font-size:clamp(42px,10vw,85px);
+  font-weight:900;
+  letter-spacing:8px;
+  text-shadow:0 0 20px #55c7ff,0 0 50px #246cff;
+}
+
+.sub{
+  margin:8px 0 35px;
+  color:#7ddcff;
+  letter-spacing:5px;
+  font-size:13px;
+}
+
+button{
+  border:1px solid #59d7ff;
+  color:white;
+  background:#081727;
+  padding:15px 55px;
+  margin:7px;
+  border-radius:12px;
+  font-size:18px;
+  font-weight:bold;
+  letter-spacing:2px;
+  box-shadow:0 0 18px #159cff55;
+}
+
+button:active{
+  transform:scale(.96);
+  background:#103452;
+}
+
+#hud{
+  position:fixed;
+  top:12px;
+  left:12px;
+  right:12px;
+  z-index:5;
+  display:none;
+  pointer-events:none;
+  color:white;
+}
+
+.hudrow{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.box{
+  background:#06101dcc;
+  border:1px solid #46caff66;
+  border-radius:9px;
+  padding:7px 11px;
+  font-size:12px;
+}
+
+.bar{
+  width:125px;
+  height:7px;
+  background:#222;
+  border-radius:8px;
+  overflow:hidden;
+  margin-top:4px;
+}
+
+#hpbar{
+  height:100%;
+  width:100%;
+  background:#55e58a;
+}
+
+#shieldbar{
+  height:100%;
+  width:100%;
+  background:#4bbcff;
+}
+
+#mobile{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:8;
+  pointer-events:none;
+}
+
+#joy{
+  position:absolute;
+  left:25px;
+  bottom:28px;
+  width:125px;
+  height:125px;
+  border-radius:50%;
+  background:#ffffff0d;
+  border:2px solid #75d9ff55;
+  pointer-events:auto;
+}
+
+#stick{
+  position:absolute;
+  left:37px;
+  top:37px;
+  width:51px;
+  height:51px;
+  border-radius:50%;
+  background:#5fd8ff55;
+  border:2px solid #8be4ff;
+}
+
+#fire{
+  position:absolute;
+  right:25px;
+  bottom:35px;
+  width:82px;
+  height:82px;
+  border-radius:50%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:30px;
+  background:#ff3d4d44;
+  border:2px solid #ff7380;
+  pointer-events:auto;
+}
+
+#switch{
+  position:absolute;
+  right:30px;
+  bottom:135px;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:23px;
+  background:#56cfff22;
+  border:2px solid #6bdcff;
+  pointer-events:auto;
+}
+
+#help{
+  position:fixed;
+  inset:0;
+  z-index:30;
+  display:none;
+  background:#02050bf5;
+  color:white;
+  padding:35px;
+  text-align:center;
+}
+
+#help h2{
+  color:#67d9ff;
+  margin-bottom:20px;
+}
+
+#help p{
+  line-height:1.8;
+  color:#c9d7e5;
+}
+
+@media(max-width:800px){
+  #mobile{display:block}
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="menu">
+  <div class="logo">RAVENIX</div>
+  <div class="sub">NOVA • RAVEN ZONE</div>
+
+  <button id="play">PLAY</button>
+  <button id="how">HOW TO PLAY</button>
+</div>
+
+<div id="help">
+  <h2>HOW TO PLAY</h2>
+  <p>
+    Move with the joystick.<br>
+    🔥 Fire automatically toward the nearest enemy.<br>
+    🔄 Switch weapons.<br><br>
+    Desktop: WASD / Arrow Keys to move<br>
+    Mouse to aim • Hold mouse button to fire<br>
+    Q = Change weapon
+  </p>
+  <button id="closeHelp">BACK</button>
+</div>
+
+<div id="hud">
+  <div class="hudrow">
+    <div class="box">
+      HP
+      <div class="bar"><div id="hpbar"></div></div>
+    </div>
+
+    <div class="box">
+      SHIELD
+      <div class="bar"><div id="shieldbar"></div></div>
+    </div>
+
+    <div class="box">LEVEL <b id="level">1</b></div>
+    <div class="box">SCORE <b id="score">0</b></div>
+    <div class="box">COINS <b id="coins">0</b></div>
+    <div class="box">WEAPON <b id="weapon">RAVEN BLASTER</b></div>
+  </div>
+</div>
+
+<div id="mobile">
+  <div id="joy">
+    <div id="stick"></div>
+  </div>
+  <div id="switch">🔄</div>
+  <div id="fire">🔥</div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let W,H;
+function resize(){
+  W=canvas.width=innerWidth*devicePixelRatio;
+  H=canvas.height=innerHeight*devicePixelRatio;
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  W=innerWidth;
+  H=innerHeight;
+}
+resize();
+addEventListener("resize",resize);
+
+const menu=document.getElementById("menu");
+const hud=document.getElementById("hud");
+const mobile=document.getElementById("mobile");
+
+let running=false;
+let score=0;
+let coins=0;
+let level=1;
+let hp=100;
+let shield=100;
+let spawnTimer=0;
+let fireTimer=0;
+
+const weapons=[
+  {name:"RAVEN BLASTER",speed:9,damage:20,cool:180},
+  {name:"NOVA SHOTGUN",speed:8,damage:35,cool:420},
+  {name:"PHANTOM RAY",speed:14,damage:15,cool:80}
+];
+
+let weaponIndex=0;
+
+const player={
+  x:0,y:0,
+  r:18,
+  speed:4.5,
+  vx:0,vy:0
+};
+
+let enemies=[];
+let bullets=[];
+let particles=[];
+
+const keys={};
+
+addEventListener("keydown",e=>{
+  keys[e.key.toLowerCase()]=true;
+
+  if(e.key.toLowerCase()==="q"){
+    changeWeapon();
+  }
+});
+
+addEventListener("keyup",e=>{
+  keys[e.key.toLowerCase()]=false;
+});
+
+let mouse={
+  x:0,
+  y:0,
+  down:false
+};
+
+canvas.addEventListener("mousemove",e=>{
+  mouse.x=e.clientX;
+  mouse.y=e.clientY;
+});
+
+canvas.addEventListener("mousedown",()=>{
+  mouse.down=true;
+});
+
+addEventListener("mouseup",()=>{
+  mouse.down=false;
+});
+
+function changeWeapon(){
+  weaponIndex=(weaponIndex+1)%weapons.length;
+  document.getElementById("weapon").textContent=
+    weapons[weaponIndex].name;
+}
+
+document.getElementById("play").onclick=startGame;
+
+document.getElementById("how").onclick=()=>{
+  document.getElementById("help").style.display="block";
+};
+
+document.getElementById("closeHelp").onclick=()=>{
+  document.getElementById("help").style.display="none";
+};
+
+function startGame(){
+  menu.style.display="none";
+  hud.style.display="block";
+  mobile.style.display=innerWidth<=800?"block":"none";
+
+  running=true;
+  score=0;
+  coins=0;
+  level=1;
+  hp=100;
+  shield=100;
+
+  enemies=[];
+  bullets=[];
+  particles=[];
+
+  player.x=W/2;
+  player.y=H/2;
+
+  for(let i=0;i<5;i++) spawnEnemy();
+
+  requestAnimationFrame(loop);
+}
+
+function spawnEnemy(){
+  const side=Math.floor(Math.random()*4);
+  let x,y;
+
+  if(side===0){
+    x=Math.random()*W;y=-30;
+  }else if(side===1){
+    x=W+30;y=Math.random()*H;
+  }else if(side===2){
+    x=Math.random()*W;y=H+30;
+  }else{
+    x=-30;y=Math.random()*H;
+  }
+
+  enemies.push({
+    x,y,
+    r:15+Math.random()*7,
+    hp:40+level*8,
+    speed:0.7+Math.random()*0.7+level*.03
+  });
+}
+
+function nearestEnemy(){
+  let target=null;
+  let best=Infinity;
+
+  for(const e of enemies){
+    const d=(e.x-player.x)**2+(e.y-player.y)**2;
+    if(d<best){
+      best=d;
+      target=e;
+    }
+  }
+
+  return target;
+}
+
+function shoot(){
+  const w=weapons[weaponIndex];
+  const target=nearestEnemy();
+
+  if(!target)return;
+
+  const dx=target.x-player.x;
+  const dy=target.y-player.y;
+  const len=Math.hypot(dx,dy)||1;
+
+  const count=weaponIndex===1?5:1;
+
+  for(let i=0;i<count;i++){
+    const spread=weaponIndex===1?(Math.random()-.5)*.35:0;
+
+    const cos=Math.cos(spread);
+    const sin=Math.sin(spread);
+
+    const vx=(dx/len*cos-dy/len*sin)*w.speed;
+    const vy=(dx/len*sin+dy/len*cos)*w.speed;
+
+    bullets.push({
+      x:player.x,
+      y:player.y,
+      vx,vy,
+      damage:w.damage,
+      life:80
+    });
+  }
+}
+
+function updatePlayer(){
+  let dx=0,dy=0;
+
+  if(keys["w"]||keys["arrowup"])dy--;
+  if(keys["s"]||keys["arrowdown"])dy++;
+  if(keys["a"]||keys["arrowleft"])dx--;
+  if(keys["d"]||keys["arrowright"])dx++;
+
+  dx+=joyX;
+  dy+=joyY;
+
+  const len=Math.hypot(dx,dy);
+
+  if(len>0){
+    dx/=len;
+    dy/=len;
+
+    player.vx+=(dx*player.speed-player.vx)*.22;
+    player.vy+=(dy*player.speed-player.vy)*.22;
+  }else{
+    player.vx*=.78;
+    player.vy*=.78;
+  }
+
+  player.x+=player.vx;
+  player.y+=player.vy;
+
+  player.x=Math.max(25,Math.min(W-25,player.x));
+  player.y=Math.max(25,Math.min(H-25,player.y));
+}
+
+function updateEnemies(){
+  for(const e of enemies){
+    const dx=player.x-e.x;
+    const dy=player.y-e.y;
+    const len=Math.hypot(dx,dy)||1;
+
+    e.x+=dx/len*e.speed;
+    e.y+=dy/len*e.speed;
+
+    if(len<e.r+player.r){
+      if(shield>0)shield-=.35;
+      else hp-=.35;
+
+      e.x-=dx/len*4;
+      e.y-=dy/len*4;
+    }
+  }
+}
+
+function updateBullets(){
+  for(let i=bullets.length-1;i>=0;i--){
+    const b=bullets[i];
+
+    b.x+=b.vx;
+    b.y+=b.vy;
+    b.life--;
+
+    let hit=false;
+
+    for(let j=enemies.length-1;j>=0;j--){
+      const e=enemies[j];
+      const d=Math.hypot(b.x-e.x,b.y-e.y);
+
+      if(d<e.r+5){
+        e.hp-=b.damage;
+        hit=true;
+
+        createParticles(b.x,b.y,5);
+
+        if(e.hp<=0){
+          score+=100;
+          coins+=1;
+          createParticles(e.x,e.y,15);
+          enemies.splice(j,1);
+        }
+
+        break;
+      }
+    }
+
+    if(hit||b.life<=0||
+       b.x<-50||b.x>W+50||
+       b.y<-50||b.y>H+50){
+      bullets.splice(i,1);
+    }
+  }
+}
+
+function createParticles(x,y,n){
+  for(let i=0;i<n;i++){
+    particles.push({
+      x,y,
+      vx:(Math.random()-.5)*5,
+      vy:(Math.random()-.5)*5,
+      life:25+Math.random()*20
+    });
+  }
+}
+
+function updateParticles(){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+
+    p.x+=p.vx;
+    p.y+=p.vy;
+    p.vx*=.96;
+    p.vy*=.96;
+    p.life--;
+
+    if(p.life<=0)particles.splice(i,1);
+  }
+}
+
+function drawBackground(){
+  ctx.clearRect(0,0,W,H);
+
+  ctx.fillStyle="#050811";
+  ctx.fillRect(0,0,W,H);
+
+  ctx.strokeStyle="#122238";
+  ctx.lineWidth=1;
+
+  const grid=55;
+
+  for(let x=0;x<W;x+=grid){
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,H);
+    ctx.stroke();
+  }
+
+  for(let y=0;y<H;y+=grid){
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(W,y);
+    ctx.stroke();
+  }
+}
+
+function drawPlayer(){
+  ctx.save();
+
+  ctx.shadowBlur=20;
+  ctx.shadowColor="#42d9ff";
+
+  ctx.fillStyle="#63ddff";
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,player.r,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle="#08131f";
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,9,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawEnemies(){
+  for(const e of enemies){
+    ctx.save();
+
+    ctx.shadowBlur=15;
+    ctx.shadowColor="#ff394f";
+
+    ctx.fillStyle="#ff4757";
+    ctx.beginPath();
+    ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle="#300810";
+    ctx.beginPath();
+    ctx.arc(e.x,e.y,e.r*.4,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+function drawBullets(){
+  for(const b of bullets){
+    ctx.save();
+    ctx.shadowBlur=12;
+    ctx.shadowColor="#7ee8ff";
+    ctx.fillStyle="#a6efff";
+
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,4,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.globalAlpha=Math.max(0,p.life/40);
+    ctx.fillStyle="#65dfff";
+
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,2.5,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha=1;
+}
+
+function updateHUD(){
+  document.getElementById("score").textContent=score;
+  document.getElementById("coins").textContent=coins;
+
+  level=Math.max(1,Math.floor(score/1000)+1);
+  document.getElementById("level").textContent=level;
+
+  document.getElementById("hpbar").style.width=
+    Math.max(0,hp)+"%";
+
+  document.getElementById("shieldbar").style.width=
+    Math.max(0,shield)+"%";
+}
+
+function gameOver(){
+  running=false;
+
+  setTimeout(()=>{
+    alert("RAVENIX NOVA\nGAME OVER\nScore: "+score);
+    location.reload();
+  },100);
+}
+
+function loop(){
+  if(!running)return;
+
+  updatePlayer();
+
+  spawnTimer--;
+
+  if(spawnTimer<=0){
+    spawnEnemy();
+    spawnTimer=Math.max(20,70-level*3);
+  }
+
+  updateEnemies();
+  updateBullets();
+  updateParticles();
+
+  fireTimer--;
+
+  if(mouse.down||firePressed||innerWidth<=800){
+    if(fireTimer<=0){
+      shoot();
+      fireTimer=weapons[weaponIndex].cool/16;
+    }
+  }
+
+  drawBackground();
+  drawParticles();
+  drawBullets();
+  drawEnemies();
+  drawPlayer();
+
+  updateHUD();
+
+  if(hp<=0){
+    gameOver();
+    return;
+  }
+
+  requestAnimationFrame(loop);
+}
+
+/* MOBILE JOYSTICK */
+
+let joyX=0;
+let joyY=0;
+let joyActive=false;
+
+const joy=document.getElementById("joy");
+const stick=document.getElementById("stick");
+
+function moveJoy(e){
+  const r=joy.getBoundingClientRect();
+
+  let x=e.clientX-r.left-r.width/2;
+  let y=e.clientY-r.top-r.height/2;
+
+  const max=42;
+  const len=Math.hypot(x,y);
+
+  if(len>max){
+    x=x/len*max;
+    y=y/len*max;
+  }
+
+  stick.style.transform=`translate(${x}px,${y}px)`;
+
+  joyX=x/max;
+  joyY=y/max;
+}
+
+function resetJoy(){
+  joyX=0;
+  joyY=0;
+  stick.style.transform="translate(0,0)";
+  joyActive=false;
+}
+
+joy.addEventListener("pointerdown",e=>{
+  joyActive=true;
+  joy.setPointerCapture(e.pointerId);
+  moveJoy(e);
+});
+
+joy.addEventListener("pointermove",e=>{
+  if(joyActive)moveJoy(e);
+});
+
+joy.addEventListener("pointerup",resetJoy);
+joy.addEventListener("pointercancel",resetJoy);
+
+/* FIRE */
+
+let firePressed=false;
+
+const fire=document.getElementById("fire");
+
+fire.addEventListener("pointerdown",e=>{
+  e.preventDefault();
+  firePressed=true;
+});
+
+fire.addEventListener("pointerup",()=>{
+  firePressed=false;
+});
+
+fire.addEventListener("pointercancel",()=>{
+  firePressed=false;
+});
+
+/* SWITCH */
+
+document.getElementById("switch").addEventListener("pointerdown",e=>{
+  e.preventDefault();
+  changeWeapon();
+});
+
+/* MOBILE DEFAULT AUTO AIM */
+setInterval(()=>{
+  if(running && innerWidth<=800 && !firePressed){
+    /* Auto-fire remains active on mobile */
+  }
+},1000);
+
+</script>
+</body>
+</html>
